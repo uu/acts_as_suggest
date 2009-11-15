@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html>
+<head>
+  <title>suggest (ActiveRecord::Acts::Suggest::SingletonMethods)</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+  <link rel="stylesheet" href="../../../../.././rdoc-style.css" type="text/css" media="screen" />
+</head>
+<body class="standalone-code">
+  <pre><span class="ruby-comment cmt"># File lib/acts_as_suggest.rb, line 47</span>
+        <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">suggest</span>(<span class="ruby-identifier">fields</span>, <span class="ruby-identifier">word</span>, <span class="ruby-identifier">treshold</span> = <span class="ruby-keyword kw">nil</span>)
+          <span class="ruby-identifier">similar_results</span> = []
+          <span class="ruby-comment cmt"># Define treshold if not explicitly specified</span>
+          <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">treshold</span>
+            <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">word</span>.<span class="ruby-identifier">size</span> <span class="ruby-operator">&lt;=</span> <span class="ruby-value">4</span>
+              <span class="ruby-identifier">treshold</span> = <span class="ruby-value">1</span>
+            <span class="ruby-keyword kw">else</span>
+              <span class="ruby-comment cmt"># Longer words should have more tolerance</span>
+              <span class="ruby-identifier">treshold</span> = <span class="ruby-identifier">word</span>.<span class="ruby-identifier">size</span><span class="ruby-operator">/</span><span class="ruby-value">3</span>
+            <span class="ruby-keyword kw">end</span>
+          <span class="ruby-keyword kw">end</span>
+          
+          <span class="ruby-comment cmt"># Checks if an array of fields is passed</span>
+          <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">fields</span>.<span class="ruby-identifier">kind_of?</span>(<span class="ruby-constant">Array</span>) 
+            <span class="ruby-identifier">conditions</span> = <span class="ruby-value str">&quot;&quot;</span>
+            <span class="ruby-comment cmt"># Hash that will contain the values for the matching symbol keys</span>
+            <span class="ruby-identifier">param_hash</span> = {}
+            <span class="ruby-comment cmt"># Builds the conditions for the find method</span>
+            <span class="ruby-comment cmt"># and fills the hash for the named parameters</span>
+            <span class="ruby-identifier">fields</span>.<span class="ruby-identifier">each_with_index</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">field</span>, <span class="ruby-identifier">i</span><span class="ruby-operator">|</span>
+              <span class="ruby-identifier">param_hash</span>[<span class="ruby-identifier">field</span>] = <span class="ruby-identifier">word</span>
+              <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">fields</span>.<span class="ruby-identifier">size</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">1</span> <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">i</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">fields</span>.<span class="ruby-identifier">size</span> <span class="ruby-operator">-</span> <span class="ruby-value">1</span>
+                <span class="ruby-identifier">conditions</span> <span class="ruby-operator">+=</span> <span class="ruby-node">&quot;#{field} = :#{field} OR &quot;</span> 
+              <span class="ruby-keyword kw">else</span>
+                <span class="ruby-identifier">conditions</span> <span class="ruby-operator">+=</span> <span class="ruby-node">&quot;#{field} = :#{field}&quot;</span>
+              <span class="ruby-keyword kw">end</span>
+            <span class="ruby-keyword kw">end</span>
+            <span class="ruby-comment cmt"># Search multiple fields through named bind variables </span>
+            <span class="ruby-comment cmt"># (for safety against tainted data)</span>
+            <span class="ruby-identifier">search_results</span> = <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">find</span>(<span class="ruby-identifier">:all</span>, <span class="ruby-identifier">:conditions</span> =<span class="ruby-operator">&gt;</span> [<span class="ruby-identifier">conditions</span>, <span class="ruby-identifier">param_hash</span>])
+          <span class="ruby-keyword kw">else</span>
+            <span class="ruby-comment cmt"># Only one field to search in</span>
+            <span class="ruby-identifier">search_results</span> = <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">find</span>(<span class="ruby-identifier">:all</span>, <span class="ruby-identifier">:conditions</span> =<span class="ruby-operator">&gt;</span> [<span class="ruby-node">&quot;#{fields} = ?&quot;</span>, <span class="ruby-identifier">word</span>])
+          <span class="ruby-keyword kw">end</span>
+       
+          <span class="ruby-comment cmt"># Checks if +word+ exist in the requested field(s)</span>
+          <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">search_results</span>.<span class="ruby-identifier">empty?</span>
+            <span class="ruby-comment cmt"># Retrieves list of all existing values in the table</span>
+            <span class="ruby-identifier">all_results</span> = <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">find</span>(<span class="ruby-identifier">:all</span>)                     
+            <span class="ruby-comment cmt"># Checks if the table is empty</span>
+            <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">all_results</span>.<span class="ruby-identifier">empty?</span>
+              <span class="ruby-identifier">all_results</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">record</span><span class="ruby-operator">|</span>
+                <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">fields</span>.<span class="ruby-identifier">kind_of?</span>(<span class="ruby-constant">Array</span>)
+                  <span class="ruby-comment cmt"># Adds all the strings that are similar to the one passed as a parameter (searching in the specified fields)</span>
+                  <span class="ruby-identifier">fields</span>.<span class="ruby-identifier">each</span> {<span class="ruby-operator">|</span><span class="ruby-identifier">field</span><span class="ruby-operator">|</span> <span class="ruby-identifier">similar_results</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">record</span>.<span class="ruby-identifier">send</span>(<span class="ruby-identifier">field</span>).<span class="ruby-identifier">to_s</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">record</span>.<span class="ruby-identifier">send</span>(<span class="ruby-identifier">field</span>).<span class="ruby-identifier">to_s</span>.<span class="ruby-identifier">similar?</span>(<span class="ruby-identifier">word</span>, <span class="ruby-identifier">treshold</span>)}
+                <span class="ruby-keyword kw">else</span>
+                  <span class="ruby-comment cmt"># Adds all the strings that are similar to the one passed as a parameter (searching the single field specified only)</span>
+                  <span class="ruby-identifier">similar_results</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">record</span>.<span class="ruby-identifier">send</span>(<span class="ruby-identifier">fields</span>).<span class="ruby-identifier">to_s</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">record</span>.<span class="ruby-identifier">send</span>(<span class="ruby-identifier">fields</span>).<span class="ruby-identifier">to_s</span>.<span class="ruby-identifier">similar?</span>(<span class="ruby-identifier">word</span>, <span class="ruby-identifier">treshold</span>)
+                <span class="ruby-keyword kw">end</span>
+              <span class="ruby-keyword kw">end</span>
+            <span class="ruby-keyword kw">end</span>
+            <span class="ruby-comment cmt"># Remove multiple entries of the same string from the results</span>
+            <span class="ruby-keyword kw">return</span> <span class="ruby-identifier">similar_results</span>.<span class="ruby-identifier">uniq</span>
+          <span class="ruby-keyword kw">else</span>
+            <span class="ruby-comment cmt"># The value exists in the table,</span>
+            <span class="ruby-comment cmt"># the corrisponding records are therefore returned in an array</span>
+            <span class="ruby-keyword kw">return</span> <span class="ruby-identifier">search_results</span>
+          <span class="ruby-keyword kw">end</span>
+          
+        <span class="ruby-keyword kw">end</span></pre>
+</body>
+</html>
